@@ -26,27 +26,79 @@ interface CartContext {
 const CartContext = createContext<CartContext | null>(null);
 
 const CartProvider: React.FC = ({ children }) => {
+  // AsyncStorage.removeItem('cart');
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     async function loadProducts(): Promise<void> {
-      // TODO LOAD ITEMS FROM ASYNC STORAGE
+      const cart = await AsyncStorage.getItem('cart');
+
+      if (!cart) {
+        setProducts([]);
+      } else {
+        setProducts(JSON.parse(cart));
+      }
     }
 
     loadProducts();
   }, []);
 
-  const addToCart = useCallback(async product => {
-    // TODO ADD A NEW ITEM TO THE CART
-  }, []);
+  const increment = useCallback(
+    async id => {
+      const productFoundIndex = products.findIndex(
+        product => product.id === id,
+      );
 
-  const increment = useCallback(async id => {
-    // TODO INCREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+      const cart = JSON.parse(JSON.stringify(products));
 
-  const decrement = useCallback(async id => {
-    // TODO DECREMENTS A PRODUCT QUANTITY IN THE CART
-  }, []);
+      cart[productFoundIndex].quantity += 1;
+
+      setProducts(cart);
+
+      await AsyncStorage.setItem('cart', JSON.stringify(cart));
+    },
+    [products],
+  );
+
+  const decrement = useCallback(
+    async id => {
+      const productFoundIndex = products.findIndex(
+        product => product.id === id,
+      );
+
+      const cart = JSON.parse(JSON.stringify(products));
+
+      cart[productFoundIndex].quantity -= 1;
+
+      if (cart[productFoundIndex].quantity === 0) {
+        cart.splice(productFoundIndex, 1);
+      }
+
+      setProducts(cart);
+
+      await AsyncStorage.setItem('cart', JSON.stringify(cart));
+    },
+    [products],
+  );
+
+  const addToCart = useCallback(
+    async product => {
+      const cart = products;
+
+      if (cart.find(loopProduct => loopProduct.id === product.id)) {
+        increment(product.id);
+      } else {
+        cart.push(Object.assign(product, { quantity: 1 }));
+
+        await AsyncStorage.setItem('cart', JSON.stringify(cart));
+
+        setProducts(cart);
+
+        console.log(cart);
+      }
+    },
+    [products, increment],
+  );
 
   const value = React.useMemo(
     () => ({ addToCart, increment, decrement, products }),
